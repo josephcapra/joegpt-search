@@ -184,8 +184,15 @@ function toBackendQuery(f) {
 function parseNaturalText(text) {
   const lower = text.toLowerCase();
 
-  // Extract city name (naive: words before "homes" or "houses")
-  let cityMatch = text.match(/in ([a-z\s]+?)(?: homes| houses| condos| townhomes|$)/i);
+  // Detect property type
+  let type = "single_family";
+  if (/\bcondo(s)?\b/.test(lower)) type = "condo";
+  if (/\btownhome(s)?\b|\btownhouse(s)?\b/.test(lower)) type = "townhouse";
+  if (/\bland\b/.test(lower)) type = "land";
+  if (/\bmulti[- ]?res(idential)?\b/.test(lower)) type = "multi_res";
+
+  // Extract city name
+  let cityMatch = text.match(/in ([a-z\s]+?)(?: homes| houses| condos| townhomes| townhouses| land|$)/i);
   const city = cityMatch ? cityMatch[1].trim().replace(/\b\w/g, c => c.toUpperCase()) : null;
 
   // Extract price range
@@ -194,28 +201,34 @@ function parseNaturalText(text) {
 
   let minPrice = 0, maxPrice = null;
   if (priceMatch) {
-    minPrice = parseInt(priceMatch[1]) * (priceMatch[1].toLowerCase().includes("k") ? 1000 : 1);
-    maxPrice = parseInt(priceMatch[2]) * (priceMatch[2].toLowerCase().includes("k") ? 1000 : 1);
+    minPrice = parseInt(priceMatch[1]) * (priceMatch[0].toLowerCase().includes("k") ? 1000 : 1);
+    maxPrice = parseInt(priceMatch[2]) * (priceMatch[0].toLowerCase().includes("k") ? 1000 : 1);
   } else if (maxMatch) {
-    maxPrice = parseInt(maxMatch[1]) * (maxMatch[1].toLowerCase().includes("k") ? 1000 : 1);
+    maxPrice = parseInt(maxMatch[1]) * (maxMatch[0].toLowerCase().includes("k") ? 1000 : 1);
   }
+
+  // Amenities
+  const hasPool = /\bpool\b/.test(lower);
+  const isWaterfront = /\bwaterfront\b|\bocean\b|\briver\b|\blake\b|\bcanal\b/.test(lower);
 
   return {
     filter: {
       geography: { county: "", cities: city ? [city] : [], subdivisions: [] },
-      types: ["single_family"],
+      types: [type],
       price: { min: minPrice, max: maxPrice },
       interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
       yearBuilt: { min: 0, max: 0 },
       booleans: {
-        pool: false, shortSale: false, foreclosure: false,
+        pool: hasPool, shortSale: false, foreclosure: false,
         seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
       },
       hoa: { minFee: 0, maxFee: 0, includes: [] },
       garage: { minSpaces: 0, maxSpaces: 0 },
-      views: [], roofs: [], waterfronts: [],
+      views: [],
+      roofs: [],
+      waterfronts: isWaterfront ? ["Waterfront"] : [],
       sort: "newest", page: 1, pageSize: 20,
-      derived: { wantsWater: false }
+      derived: { wantsWater: isWaterfront }
     }
   };
 }
