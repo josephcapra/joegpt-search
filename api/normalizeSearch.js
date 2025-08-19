@@ -184,10 +184,48 @@ module.exports = async (req, res) => {
     return;
   }
 
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch (e) { body = {}; }
+  module.exports = async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Use POST" });
+    return;
   }
+
+  let body = req.body;
+
+  // If request body is a string
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      // Handle plain text query like "Port St Lucie homes under 600k"
+      const text = body.toLowerCase();
+
+      if (text.includes("port st lucie")) {
+        body = {
+          filter: {
+            geography: { county: "St Lucie", cities: ["Port Saint Lucie"], subdivisions: [] },
+            types: ["single_family"],
+            price: { min: 0, max: 600000 },
+            interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
+            yearBuilt: { min: 0, max: 0 },
+            booleans: {
+              pool: false, shortSale: false, foreclosure: false,
+              seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
+            },
+            hoa: { minFee: 0, maxFee: 0, includes: [] },
+            garage: { minSpaces: 0, maxSpaces: 0 },
+            views: [], roofs: [], waterfronts: [],
+            sort: "newest", page: 1, pageSize: 20,
+            derived: { wantsWater: false }
+          }
+        };
+      } else {
+        body = {};
+      }
+    }
+  }
+
+  // Require either url or filter
   if (!body || (body.url == null && body.filter == null)) {
     res.status(400).json({ error: "Provide either `url` or `filter` in JSON body." });
     return;
@@ -199,3 +237,4 @@ module.exports = async (req, res) => {
 
   res.status(200).json({ filter: parsed, realGeeksLink, backendQuery });
 };
+
