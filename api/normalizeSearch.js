@@ -192,12 +192,63 @@ module.exports = async (req, res) => {
 
   let body = req.body;
 
-  // If body somehow comes as a raw string
+  // If body comes in as a string
   if (typeof body === "string") {
     try {
       body = JSON.parse(body);
     } catch (e) {
       const text = body.toLowerCase();
+
+      // crude parser fallback for natural text
+      if (text.includes("port st lucie")) {
+        body = {
+          filter: {
+            geography: { county: "St Lucie", cities: ["Port Saint Lucie"], subdivisions: [] },
+            types: ["single_family"],
+            price: { min: 0, max: 600000 },
+            interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
+            yearBuilt: { min: 0, max: 0 },
+            booleans: {
+              pool: false, shortSale: false, foreclosure: false,
+              seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
+            },
+            hoa: { minFee: 0, maxFee: 0, includes: [] },
+            garage: { minSpaces: 0, maxSpaces: 0 },
+            views: [], roofs: [], waterfronts: [],
+            sort: "newest", page: 1, pageSize: 20,
+            derived: { wantsWater: false }
+          }
+        };
+      } else {
+        body = null;
+      }
+    }
+  }
+
+  if (!body || (body.url == null && body.filter == null)) {
+    res.status(400).json({ error: "Provide either `url` or `filter` in JSON body." });
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = body.url ? parseRealGeeksUrl(body.url) : body.filter;
+  } catch (err) {
+    console.error("Error parsing input:", err);
+    return res.status(500).json({ error: "Failed to parse input", details: err.message });
+  }
+
+  let realGeeksLink, backendQuery;
+  try {
+    realGeeksLink = toRealGeeksUrl(BASE, parsed);
+    backendQuery = toBackendQuery(parsed);
+  } catch (err) {
+    console.error("Error building queries:", err);
+    return res.status(500).json({ error: "Failed to build queries", details: err.message, parsed });
+  }
+
+  res.status(200).json({ filter: parsed, realGeeksLink, backendQuery });
+};
 
       // crude parser fallback for natural text queries
       if (text.includes("port st lucie")) {
