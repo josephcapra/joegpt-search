@@ -1,8 +1,18 @@
-"scripts": {
-  "dev": "next dev",
-  "build": "next build",
-  "start": "next start"
+{
+  "name": "joegpt-search",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serverless API for JoeGPT Real Geeks URL normalization",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.5.0",
+    "next": "^15.4.7",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
 }
-
-
-
