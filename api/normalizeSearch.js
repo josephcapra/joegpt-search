@@ -184,7 +184,7 @@ module.exports = async (req, res) => {
     return;
   }
 
-  module.exports = async (req, res) => {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Use POST" });
     return;
@@ -192,14 +192,14 @@ module.exports = async (req, res) => {
 
   let body = req.body;
 
-  // If request body is a string
+  // If body somehow comes as a raw string
   if (typeof body === "string") {
     try {
       body = JSON.parse(body);
     } catch (e) {
-      // Handle plain text query like "Port St Lucie homes under 600k"
       const text = body.toLowerCase();
 
+      // crude parser fallback for natural text queries
       if (text.includes("port st lucie")) {
         body = {
           filter: {
@@ -220,12 +220,12 @@ module.exports = async (req, res) => {
           }
         };
       } else {
-        body = {};
+        body = null;
       }
     }
   }
 
-  // Require either url or filter
+  // If no url or filter, bail out safely
   if (!body || (body.url == null && body.filter == null)) {
     res.status(400).json({ error: "Provide either `url` or `filter` in JSON body." });
     return;
