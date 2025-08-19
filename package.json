@@ -1,12 +1,8 @@
-{
-  "name": "joegpt-search",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Serverless API for JoeGPT Real Geeks URL normalization",
-  "license": "MIT",
-  "dependencies": {
-    "@vercel/analytics": "^1.5.0"
-  }
+"scripts": {
+  "dev": "next dev",
+  "build": "next build",
+  "start": "next start"
 }
+
 
 
