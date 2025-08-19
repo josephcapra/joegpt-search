@@ -1,7 +1,6 @@
-
 const BASE = process.env.REALGEEKS_SEARCH_BASE || "https://paradiserealtyfla.realgeeks.com/search/results/";
 
-// Helpers
+// ---------------- Helpers ----------------
 function asBool(v) {
   if (v === undefined || v === null) return null;
   if (typeof v === "boolean") return v;
@@ -34,6 +33,7 @@ function toArraySearch(params, key) {
   return vals.map(decodeURIComponent).map(fixLabel);
 }
 
+// ---------------- Parse RealGeeks URL into Filter ----------------
 function parseRealGeeksUrl(url) {
   const u = new URL(url);
   const q = u.searchParams;
@@ -91,6 +91,7 @@ function parseRealGeeksUrl(url) {
   return filter;
 }
 
+// ---------------- Convert Filter to RealGeeks URL ----------------
 function toRealGeeksUrl(base, f) {
   const q = new URLSearchParams();
   if (f.geography?.county) q.set("county", f.geography.county);
@@ -131,6 +132,7 @@ function toRealGeeksUrl(base, f) {
   return `${base}?${q.toString()}`;
 }
 
+// ---------------- Convert Filter to Backend Query ----------------
 function toBackendQuery(f) {
   const must = [];
   const should = [];
@@ -178,12 +180,7 @@ function toBackendQuery(f) {
   return { query: { bool: { must, filter, should, minimum_should_match: should.length ? 1 : 0 } } };
 }
 
-module.exports = async (req, res) => {
-  if (req.method !== "POST") {
-    res.status(405).json({ error: "Use POST" });
-    return;
-  }
-
+// ---------------- Main Handler ----------------
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Use POST" });
@@ -249,43 +246,3 @@ module.exports = async (req, res) => {
 
   res.status(200).json({ filter: parsed, realGeeksLink, backendQuery });
 };
-
-      // crude parser fallback for natural text queries
-      if (text.includes("port st lucie")) {
-        body = {
-          filter: {
-            geography: { county: "St Lucie", cities: ["Port Saint Lucie"], subdivisions: [] },
-            types: ["single_family"],
-            price: { min: 0, max: 600000 },
-            interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
-            yearBuilt: { min: 0, max: 0 },
-            booleans: {
-              pool: false, shortSale: false, foreclosure: false,
-              seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
-            },
-            hoa: { minFee: 0, maxFee: 0, includes: [] },
-            garage: { minSpaces: 0, maxSpaces: 0 },
-            views: [], roofs: [], waterfronts: [],
-            sort: "newest", page: 1, pageSize: 20,
-            derived: { wantsWater: false }
-          }
-        };
-      } else {
-        body = null;
-      }
-    }
-  }
-
-  // If no url or filter, bail out safely
-  if (!body || (body.url == null && body.filter == null)) {
-    res.status(400).json({ error: "Provide either `url` or `filter` in JSON body." });
-    return;
-  }
-
-  const parsed = body.url ? parseRealGeeksUrl(body.url) : body.filter;
-  const realGeeksLink = toRealGeeksUrl(BASE, parsed);
-  const backendQuery = toBackendQuery(parsed);
-
-  res.status(200).json({ filter: parsed, realGeeksLink, backendQuery });
-};
-
