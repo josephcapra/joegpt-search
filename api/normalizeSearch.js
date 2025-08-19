@@ -180,6 +180,46 @@ function toBackendQuery(f) {
   return { query: { bool: { must, filter, should, minimum_should_match: should.length ? 1 : 0 } } };
 }
 
+// ---------------- Natural Text Parser ----------------
+function parseNaturalText(text) {
+  const lower = text.toLowerCase();
+
+  // Extract city name (naive: words before "homes" or "houses")
+  let cityMatch = text.match(/in ([a-z\s]+?)(?: homes| houses| condos| townhomes|$)/i);
+  const city = cityMatch ? cityMatch[1].trim().replace(/\b\w/g, c => c.toUpperCase()) : null;
+
+  // Extract price range
+  let priceMatch = text.match(/(\d+)[kK]?\s*[-to]+\s*(\d+)[kK]?/);
+  let maxMatch = text.match(/under\s*(\d+)[kK]?/i);
+
+  let minPrice = 0, maxPrice = null;
+  if (priceMatch) {
+    minPrice = parseInt(priceMatch[1]) * (priceMatch[1].toLowerCase().includes("k") ? 1000 : 1);
+    maxPrice = parseInt(priceMatch[2]) * (priceMatch[2].toLowerCase().includes("k") ? 1000 : 1);
+  } else if (maxMatch) {
+    maxPrice = parseInt(maxMatch[1]) * (maxMatch[1].toLowerCase().includes("k") ? 1000 : 1);
+  }
+
+  return {
+    filter: {
+      geography: { county: "", cities: city ? [city] : [], subdivisions: [] },
+      types: ["single_family"],
+      price: { min: minPrice, max: maxPrice },
+      interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
+      yearBuilt: { min: 0, max: 0 },
+      booleans: {
+        pool: false, shortSale: false, foreclosure: false,
+        seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
+      },
+      hoa: { minFee: 0, maxFee: 0, includes: [] },
+      garage: { minSpaces: 0, maxSpaces: 0 },
+      views: [], roofs: [], waterfronts: [],
+      sort: "newest", page: 1, pageSize: 20,
+      derived: { wantsWater: false }
+    }
+  };
+}
+
 // ---------------- Main Handler ----------------
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -189,36 +229,11 @@ module.exports = async (req, res) => {
 
   let body = req.body;
 
-  // If body comes in as a string
   if (typeof body === "string") {
     try {
       body = JSON.parse(body);
-    } catch (e) {
-      const text = body.toLowerCase();
-
-      // crude parser fallback for natural text
-      if (text.includes("port st lucie")) {
-        body = {
-          filter: {
-            geography: { county: "St Lucie", cities: ["Port Saint Lucie"], subdivisions: [] },
-            types: ["single_family"],
-            price: { min: 0, max: 600000 },
-            interior: { minSqft: 0, minBeds: 0, minBaths: 0 },
-            yearBuilt: { min: 0, max: 0 },
-            booleans: {
-              pool: false, shortSale: false, foreclosure: false,
-              seniorCommunity: false, hoaRequired: false, membershipPurchaseRequired: false
-            },
-            hoa: { minFee: 0, maxFee: 0, includes: [] },
-            garage: { minSpaces: 0, maxSpaces: 0 },
-            views: [], roofs: [], waterfronts: [],
-            sort: "newest", page: 1, pageSize: 20,
-            derived: { wantsWater: false }
-          }
-        };
-      } else {
-        body = null;
-      }
+    } catch {
+      body = parseNaturalText(body);
     }
   }
 
