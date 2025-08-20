@@ -16,26 +16,24 @@ export default async function handler(req, res) {
     const { url, filter } = req.body;
 
     let normalizedFilter = filter || {};
-    let realGeeksLink = "https://www.paradiserealtyfla.com/";
 
-    // 🔑 Inject Vercel bypass token
+    // 🔑 Vercel bypass token
     const BYPASS_TOKEN =
       process.env.VERCEL_AUTOMATION_BYPASS_SECRET ||
       "ZG3ivryl8xOd10sLUNzWmadRKYY1ciAD";
 
-    // If URL provided
+    // ✅ Fallback ParadiseRealtyFLA link
+    let realGeeksLink = "https://www.paradiserealtyfla.com/";
+
     if (url) {
       normalizedFilter = {
         geography: { cities: ["Stuart"] },
         price: { min: 200000, max: 800000 },
       };
-
-      realGeeksLink = `https://joegpt-search-joe-1761s-projects.vercel.app/api/normalizeSearch` +
-        `?x-vercel-set-bypass-cookie=true` +
-        `&x-vercel-protection-bypass=${BYPASS_TOKEN}`;
+      realGeeksLink =
+        "https://www.paradiserealtyfla.com/search/results/?city=Stuart&min=200000&max=800000";
     }
 
-    // If filter provided
     if (filter) {
       const params = new URLSearchParams();
 
@@ -58,15 +56,35 @@ export default async function handler(req, res) {
         params.append("beds_max", filter.beds.max);
       }
 
-      // ✅ Always attach bypass token when proxying to ParadiseRealtyFLA
-      realGeeksLink =
-        `https://www.paradiserealtyfla.com/search/results/?${params.toString()}` +
-        `&x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${BYPASS_TOKEN}`;
+      realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
     }
 
+    // ✅ Fetch live MLS data from joegpt-search with bypass token
+    const upstreamUrl =
+      `https://joegpt-search-joe-1761s-projects.vercel.app/api/normalizeSearch` +
+      `?x-vercel-set-bypass-cookie=true` +
+      `&x-vercel-protection-bypass=${BYPASS_TOKEN}`;
+
+    const upstreamResp = await fetch(upstreamUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, filter }),
+    });
+
+    let upstreamData = {};
+    if (upstreamResp.ok) {
+      upstreamData = await upstreamResp.json();
+    } else {
+      console.warn("Upstream normalizeSearch failed:", upstreamResp.status);
+    }
+
+    // ✅ Merge upstream link if available (canonical link always upstream’s)
+    const mergedLink = upstreamData.realGeeksLink || realGeeksLink;
+
     return res.status(200).json({
-      filter: normalizedFilter,
-      realGeeksLink,
+      filter: upstreamData.filter || normalizedFilter,
+      realGeeksLink: mergedLink,
+      results: upstreamData.results || upstreamData.data || null,
     });
   } catch (err) {
     console.error("normalizeSearch error:", err);
