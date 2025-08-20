@@ -1,11 +1,8 @@
 {
-    "version": 2,
-    "builds": [
-      { "src": "api/normalizeSearch.js", "use": "@vercel/node" }
-    ],
-    "routes": [
-      { "src": "/api/normalizeSearch", "dest": "/api/normalizeSearch.js" }
-    ]
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
   }
-
-  
+}
