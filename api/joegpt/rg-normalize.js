@@ -1,201 +1,38 @@
+// /api/normalizeSearch.js
+export default async function handler(req, res) {
+  // ✅ Allow CORS (so your Real Geeks site can call this API)
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-const BASE = process.env.REALGEEKS_SEARCH_BASE || "https://paradiserealtyfla.realgeeks.com/search/results/";
-
-// Helpers
-function asBool(v) {
-  if (v === undefined || v === null) return null;
-  if (typeof v === "boolean") return v;
-  const s = String(v).toLowerCase();
-  if (["1", "true", "yes"].includes(s)) return true;
-  if (["0", "false", "no"].includes(s)) return false;
-  return null;
-}
-function asNum(v) {
-  if (v === undefined || v === null) return null;
-  const s = String(v).toLowerCase();
-  if (s === "all" || s === "") return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-function fixLabel(s) {
-  if (s == null) return s;
-  return String(s)
-    .replace(/intercoastal/gi, "Intracoastal")
-    .replace(/Pool\(s\)/gi, "Pool")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-const typeMap = { res: "single_family", con: "condo", twn: "townhouse", land: "land", "multi-res": "multi_res" };
-const revTypeMap = { single_family: "res", condo: "con", townhouse: "twn", land: "land", multi_res: "multi-res" };
-
-function toArraySearch(params, key) {
-  const vals = params.getAll(key);
-  return vals.map(decodeURIComponent).map(fixLabel);
-}
-
-function parseRealGeeksUrl(url) {
-  const u = new URL(url);
-  const q = u.searchParams;
-  const types = q.getAll("type").map(t => typeMap[t] || t).filter(Boolean);
-
-  const cityParam = q.get("city");
-  const subParam = q.get("subdivision");
-
-  const filter = {
-    geography: {
-      county: q.get("county") || undefined,
-      cities: cityParam && cityParam.toLowerCase() !== "all" ? [cityParam] : null,
-      subdivisions: subParam && subParam.toLowerCase() !== "all" ? [subParam] : null,
-    },
-    types: types.length ? types : undefined,
-    price: { min: asNum(q.get("list_price_min")), max: asNum(q.get("list_price_max")) },
-    interior: {
-      minSqft: asNum(q.get("area_min")),
-      minBeds: asNum(q.get("beds_min")),
-      minBaths: asNum(q.get("baths_min"))
-    },
-    lot: { minAcres: asNum(q.get("acres_min")), lotDimensions: q.get("lot_dimensions") ?? null },
-    yearBuilt: { min: asNum(q.get("year_built_min")) },
-    booleans: {
-      pool: asBool(q.get("pool")),
-      shortSale: asBool(q.get("short_sale")),
-      foreclosure: asBool(q.get("foreclosure")),
-      seniorCommunity: asBool(q.get("senior_community_yn")),
-      hoaRequired: asBool(q.get("hoa_yn")),
-      membershipPurchaseRequired: asBool(q.get("membership_purch_rqd")),
-    },
-    hoa: {
-      minFee: asNum(q.get("hoa_fee_min")),
-      maxFee: asNum(q.get("hoa_fee_max")),
-      includes: q.getAll("hoa_fee_includes").map(fixLabel),
-    },
-    garage: { minSpaces: asNum(q.get("garage_spaces_min")), maxSpaces: asNum(q.get("garage_spaces_max")) },
-    views: toArraySearch(q, "view"),
-    roofs: toArraySearch(q, "roof"),
-    waterfronts: toArraySearch(q, "waterfront"),
-  };
-
-  filter.derived = {
-    wantsWater: (filter.waterfronts && filter.waterfronts.length > 0) ||
-      (filter.views && filter.views.some(v => /bay|canal|lake|ocean|river|water/i.test(v))) || false
-  };
-
-  // Sanity for ranges
-  if (filter.price?.min != null && filter.price?.max != null && filter.price.min > filter.price.max) {
-    const t = filter.price.min; filter.price.min = filter.price.max; filter.price.max = t;
+  // ✅ Handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
   }
-  if (filter.hoa?.minFee != null && filter.hoa?.maxFee != null && filter.hoa.minFee > filter.hoa.maxFee) {
-    const t = filter.hoa.minFee; filter.hoa.minFee = filter.hoa.maxFee; filter.hoa.maxFee = t;
-  }
-  return filter;
-}
 
-function toRealGeeksUrl(base, f) {
-  const q = new URLSearchParams();
-  if (f.geography?.county) q.set("county", f.geography.county);
-  q.set("city", f.geography?.cities?.[0] ?? "all");
-  q.set("subdivision", f.geography?.subdivisions?.[0] ?? "all");
-
-  (f.types ?? []).forEach(t => q.append("type", revTypeMap[t] || t));
-
-  if (f.price) {
-    if (f.price.min != null) q.set("list_price_min", String(f.price.min));
-    q.set("list_price_max", f.price.max != null ? String(f.price.max) : "all");
-  }
-  if (f.interior?.minSqft != null) q.set("area_min", String(f.interior.minSqft));
-  if (f.lot?.minAcres != null) q.set("acres_min", String(f.lot.minAcres));
-  if (f.interior?.minBeds != null) q.set("beds_min", String(f.interior.minBeds));
-  if (f.interior?.minBaths != null) q.set("baths_min", String(f.interior.minBaths));
-  if (f.yearBuilt?.min != null) q.set("year_built_min", String(f.yearBuilt.min));
-
-  const setBool = (k, v) => { if (v === true || v === false) q.set(k, String(v)); };
-  setBool("senior_community_yn", f.booleans?.seniorCommunity);
-  setBool("pool", f.booleans?.pool);
-  setBool("short_sale", f.booleans?.shortSale);
-  setBool("foreclosure", f.booleans?.foreclosure);
-  setBool("hoa_yn", f.booleans?.hoaRequired);
-  if (f.hoa?.minFee != null) q.set("hoa_fee_min", String(f.hoa.minFee));
-  if (f.hoa?.maxFee != null) q.set("hoa_fee_max", String(f.hoa.maxFee));
-  (f.hoa?.includes ?? []).forEach(v => q.append("hoa_fee_includes", v));
-
-  if (f.garage?.minSpaces != null) q.set("garage_spaces_min", String(f.garage.minSpaces));
-  if (f.garage?.maxSpaces != null) q.set("garage_spaces_max", String(f.garage.maxSpaces));
-  setBool("membership_purch_rqd", f.booleans?.membershipPurchaseRequired);
-
-  (f.views ?? []).forEach(v => q.append("view", v));
-  (f.roofs ?? []).forEach(v => q.append("roof", v));
-  (f.waterfronts ?? []).forEach(v => q.append("waterfront", v));
-
-  q.set("lot_dimensions", f.lot?.lotDimensions ?? "all");
-  return `${base}?${q.toString()}`;
-}
-
-function toBackendQuery(f) {
-  const must = [];
-  const should = [];
-  const filter = [];
-
-  const pushRange = (field, gte, lte) => {
-    const r = {};
-    if (gte != null) r.gte = gte;
-    if (lte != null) r.lte = lte;
-    if (Object.keys(r).length) filter.push({ range: { [field]: r } });
-  };
-  const pushTerm = (field, v) => { if (v !== null && v !== undefined) filter.push({ term: { [field]: v } }); };
-  const pushTerms = (field, arr) => { if (arr && arr.length) filter.push({ terms: { [field]: arr } }); };
-
-  if (f.geography?.county) pushTerm("county", f.geography.county);
-  if (f.geography?.cities?.length) pushTerms("city", f.geography.cities);
-  if (f.geography?.subdivisions?.length) pushTerms("subdivision", f.geography.subdivisions);
-
-  if (f.types?.length) pushTerms("property_type", f.types);
-
-  pushRange("list_price", f.price?.min ?? null, f.price?.max ?? null);
-  if (f.interior?.minSqft != null) pushRange("sqft", f.interior.minSqft, null);
-  if (f.interior?.minBeds != null) pushRange("beds", f.interior.minBeds, null);
-  if (f.interior?.minBaths != null) pushRange("baths", f.interior.minBaths, null);
-  if (f.lot?.minAcres != null) pushRange("acres", f.lot.minAcres, null);
-  if (f.yearBuilt?.min != null) pushRange("year_built", f.yearBuilt.min, null);
-
-  const b = f.booleans || {};
-  pushTerm("pool", b.pool);
-  pushTerm("is_short_sale", b.shortSale);
-  pushTerm("is_foreclosure", b.foreclosure);
-  pushTerm("senior_community", b.seniorCommunity);
-  pushTerm("hoa_required", b.hoaRequired);
-  pushTerm("membership_purchase_required", b.membershipPurchaseRequired);
-
-  pushRange("hoa_fee", f.hoa?.minFee ?? null, f.hoa?.maxFee ?? null);
-  if (f.hoa?.includes?.length) pushTerms("hoa.includes", f.hoa.includes);
-
-  pushTerms("view", f.views);
-  pushTerms("roof", f.roofs);
-  pushTerms("waterfront", f.waterfronts);
-
-  if (f.derived?.wantsWater) should.push({ term: { has_water_view: true } });
-
-  return { query: { bool: { must, filter, should, minimum_should_match: should.length ? 1 : 0 } } };
-}
-
-module.exports = async (req, res) => {
+  // ✅ Only allow POST
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Use POST" });
-    return;
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  let body = req.body;
-  if (typeof body === "string") {
-    try { body = JSON.parse(body); } catch (e) { body = {}; }
-  }
-  if (!body || (body.url == null && body.filter == null)) {
-    res.status(400).json({ error: "Provide either `url` or `filter` in JSON body." });
-    return;
-  }
+  try {
+    const { filter, url } = req.body;
 
-  const parsed = body.url ? parseRealGeeksUrl(body.url) : body.filter;
-  const realGeeksLink = toRealGeeksUrl(BASE, parsed);
-  const backendQuery = toBackendQuery(parsed);
+    if (!filter && !url) {
+      return res.status(400).json({
+        error: "Provide either 'url' or 'filter' in JSON body."
+      });
+    }
 
-  res.status(200).json({ filter: parsed, realGeeksLink, backendQuery });
-};
+    // For now, just echo back the query so we know it's working
+    return res.status(200).json({
+      answer: `✅ JoeGPT received your query: "${filter || url}"`
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Server error",
+      details: err.message
+    });
+  }
+}
+
