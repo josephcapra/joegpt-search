@@ -4,11 +4,19 @@ import path from "path";
 // Root folder of your project
 const directory = "./"; 
 
-// The text we want to replace
+// Old and new domains
 const oldDomain = "joegpt-search.vercel.app";
 const newDomain = "joegpt.net";
 
-// Recursively walk through all files
+// File extensions to scan
+const textFileExtensions = [
+  ".js", ".ts", ".jsx", ".tsx",
+  ".json", ".env", ".md", ".html",
+  ".css", ".yml", ".yaml", ".txt",
+  ".config", ".lock", ".cjs", ".mjs"
+];
+
+// Recursively walk through all files in the project
 function walk(dir, callback) {
   fs.readdirSync(dir).forEach(file => {
     const fullPath = path.join(dir, file);
@@ -22,8 +30,8 @@ function walk(dir, callback) {
 
 // Replace function
 function replaceInFile(filePath) {
-  if (!filePath.endsWith(".js") && !filePath.endsWith(".ts") && !filePath.endsWith(".json")) {
-    return; // only process code/config files
+  if (!textFileExtensions.some(ext => filePath.endsWith(ext))) {
+    return; // Skip binaries or unknown file types
   }
 
   let content = fs.readFileSync(filePath, "utf8");
@@ -34,6 +42,7 @@ function replaceInFile(filePath) {
   }
 }
 
-// Run
+// Run the replacement
 walk(directory, replaceInFile);
-console.log("🎉 Done replacing all instances!");
+console.log("🎉 Done replacing all instances across project!");
+
