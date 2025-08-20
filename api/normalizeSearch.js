@@ -1,5 +1,6 @@
 // pages/api/normalizeSearch.js
 
+
 export default async function handler(req, res) {
   // ✅ Allow CORS (so your Real Geeks site can call this API)
   res.setHeader("Access-Control-Allow-Origin", "*");
