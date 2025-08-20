@@ -1,15 +1,12 @@
 // pages/api/normalizeSearch.js
 
 export default function handler(req, res) {
-  // ✅ CORS headers
+  // ✅ Allow cross-origin
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  // Handle preflight request
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
@@ -21,8 +18,8 @@ export default function handler(req, res) {
     let normalizedFilter = filter || {};
     let realGeeksLink = "https://www.paradiserealtyfla.com/";
 
+    // If URL provided
     if (url) {
-      // Example parse
       normalizedFilter = {
         geography: { cities: ["Stuart"] },
         price: { min: 200000, max: 800000 },
@@ -30,6 +27,7 @@ export default function handler(req, res) {
       realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?city=Stuart&min=200000&max=800000`;
     }
 
+    // If filter provided
     if (filter) {
       const params = new URLSearchParams();
 
@@ -44,6 +42,12 @@ export default function handler(req, res) {
       }
       if (filter.price?.max) {
         params.append("max_price", filter.price.max);
+      }
+      if (filter.beds?.min) {
+        params.append("beds_min", filter.beds.min);
+      }
+      if (filter.beds?.max) {
+        params.append("beds_max", filter.beds.max);
       }
 
       realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
@@ -60,3 +64,4 @@ export default function handler(req, res) {
       .json({ error: "Internal Server Error", details: err.message });
   }
 }
+
