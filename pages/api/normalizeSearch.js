@@ -1,6 +1,6 @@
 // pages/api/normalizeSearch.js
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
   // ✅ Allow cross-origin
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -18,13 +18,21 @@ export default function handler(req, res) {
     let normalizedFilter = filter || {};
     let realGeeksLink = "https://www.paradiserealtyfla.com/";
 
+    // 🔑 Inject Vercel bypass token
+    const BYPASS_TOKEN =
+      process.env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+      "ZG3ivryl8xOd10sLUNzWmadRKYY1ciAD";
+
     // If URL provided
     if (url) {
       normalizedFilter = {
         geography: { cities: ["Stuart"] },
         price: { min: 200000, max: 800000 },
       };
-      realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?city=Stuart&min=200000&max=800000`;
+
+      realGeeksLink = `https://joegpt-search-joe-1761s-projects.vercel.app/api/normalizeSearch` +
+        `?x-vercel-set-bypass-cookie=true` +
+        `&x-vercel-protection-bypass=${BYPASS_TOKEN}`;
     }
 
     // If filter provided
@@ -50,7 +58,10 @@ export default function handler(req, res) {
         params.append("beds_max", filter.beds.max);
       }
 
-      realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
+      // ✅ Always attach bypass token when proxying to ParadiseRealtyFLA
+      realGeeksLink =
+        `https://www.paradiserealtyfla.com/search/results/?${params.toString()}` +
+        `&x-vercel-set-bypass-cookie=true&x-vercel-protection-bypass=${BYPASS_TOKEN}`;
     }
 
     return res.status(200).json({
@@ -64,4 +75,3 @@ export default function handler(req, res) {
       .json({ error: "Internal Server Error", details: err.message });
   }
 }
-
