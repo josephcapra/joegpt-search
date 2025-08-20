@@ -1,6 +1,16 @@
 // pages/api/normalizeSearch.js
 
 export default function handler(req, res) {
+  // ✅ CORS headers
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
@@ -8,12 +18,11 @@ export default function handler(req, res) {
   try {
     const { url, filter } = req.body;
 
-    // If URL is passed, pretend we parse it into a filter
     let normalizedFilter = filter || {};
     let realGeeksLink = "https://www.paradiserealtyfla.com/";
 
     if (url) {
-      // Example logic: (replace this with real parsing)
+      // Example parse
       normalizedFilter = {
         geography: { cities: ["Stuart"] },
         price: { min: 200000, max: 800000 },
@@ -21,7 +30,6 @@ export default function handler(req, res) {
       realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?city=Stuart&min=200000&max=800000`;
     }
 
-    // If filter object exists, build a Real Geeks link
     if (filter) {
       const params = new URLSearchParams();
 
@@ -47,6 +55,8 @@ export default function handler(req, res) {
     });
   } catch (err) {
     console.error("normalizeSearch error:", err);
-    return res.status(500).json({ error: "Internal Server Error", details: err.message });
+    return res
+      .status(500)
+      .json({ error: "Internal Server Error", details: err.message });
   }
 }
