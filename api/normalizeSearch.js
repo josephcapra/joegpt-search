@@ -235,6 +235,17 @@ function parseNaturalText(text) {
 
 // ---------------- Main Handler ----------------
 module.exports = async (req, res) => {
+  // --- Allow CORS ---
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Handle preflight request
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "POST") {
     res.status(405).json({ error: "Use POST" });
     return;
