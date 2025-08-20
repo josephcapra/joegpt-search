@@ -1,25 +1,38 @@
 import { useState } from "react";
 
-export default function SearchTest() {
-  const [result, setResult] = useState(null);
+export default function TestSearch() {
+  const [query, setQuery] = useState("");
+  const [response, setResponse] = useState("");
 
-  async function runSearch() {
-    const res = await fetch("/api/normalizeSearch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: "https://www.paradiserealtyfla.com/search/results/?city=Port+St+Lucie&minprice=300000&maxprice=600000&beds=3&baths=2"
-      })
-    });
+  async function sendQuery() {
+    try {
+      const res = await fetch("/api/normalizeSearch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ filter: query }) // 👈 send filter in POST body
+      });
 
-    const data = await res.json();
-    setResult(data);
+      const data = await res.json();
+      setResponse(JSON.stringify(data, null, 2));
+    } catch (err) {
+      setResponse("Error: " + err.message);
+    }
   }
 
   return (
-    <div>
-      <button onClick={runSearch}>Run Search</button>
-      <pre>{result && JSON.stringify(result, null, 2)}</pre>
+    <div style={{ padding: 20 }}>
+      <h1>Test JoeGPT Search</h1>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Ask something..."
+        style={{ width: "300px" }}
+      />
+      <button onClick={sendQuery}>Send</button>
+      <pre>{response}</pre>
     </div>
   );
 }
