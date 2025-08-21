@@ -42,11 +42,11 @@ export default async function handler(req, res) {
       // Forward to your existing parseSearch
       return parseSearch(req, res);
     } else {
-      // ✅ Forward to JoeGPT (Custom GPT ID)
+      // ✅ Forward to JoeGPT using your Service_Account_Joe key
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.Personal_Account_Key}`,
+          "Authorization": `Bearer ${process.env.Service_Account_Joe}`, // 👈 updated here
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -64,6 +64,7 @@ export default async function handler(req, res) {
       });
 
       const data = await response.json();
+      console.log("DEBUG OpenAI response:", data); // 👈 helpful for Vercel logs
 
       // ✅ Parse the new /responses output format
       const answer =
