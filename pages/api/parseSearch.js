@@ -65,35 +65,51 @@ export default async function handler(req, res) {
 
     // ---- Price ----
     const underMatch = q.match(/under\s*\$?(\d+[kKmM]?)/);
-    if (underMatch) {
+    if (underMatch && underMatch[1]) {
       let val = underMatch[1];
-      if (val.toLowerCase().endsWith("k")) val = parseInt(val) * 1000;
-      if (val.toLowerCase().endsWith("m")) val = parseInt(val) * 1000000;
-      params.append("list_price_max", val);
-      filter.priceMax = val;
+      if (typeof val === "string") {
+        if (val.toLowerCase().endsWith("k")) val = parseInt(val) * 1000;
+        else if (val.toLowerCase().endsWith("m")) val = parseInt(val) * 1000000;
+        else val = parseInt(val);
+      }
+      if (!isNaN(val)) {
+        params.append("list_price_max", val);
+        filter.priceMax = val;
+      }
     }
 
     const overMatch = q.match(/over\s*\$?(\d+[kKmM]?)/);
-    if (overMatch) {
+    if (overMatch && overMatch[1]) {
       let val = overMatch[1];
-      if (val.toLowerCase().endsWith("k")) val = parseInt(val) * 1000;
-      if (val.toLowerCase().endsWith("m")) val = parseInt(val) * 1000000;
-      params.append("list_price_min", val);
-      filter.priceMin = val;
+      if (typeof val === "string") {
+        if (val.toLowerCase().endsWith("k")) val = parseInt(val) * 1000;
+        else if (val.toLowerCase().endsWith("m")) val = parseInt(val) * 1000000;
+        else val = parseInt(val);
+      }
+      if (!isNaN(val)) {
+        params.append("list_price_min", val);
+        filter.priceMin = val;
+      }
     }
 
     // ---- Bedrooms ----
     const bedMatch = q.match(/(\d+)\s*(bed|bedroom)/);
-    if (bedMatch) {
-      params.append("beds_min", bedMatch[1]);
-      filter.beds = bedMatch[1];
+    if (bedMatch && bedMatch[1]) {
+      const beds = parseInt(bedMatch[1]);
+      if (!isNaN(beds)) {
+        params.append("beds_min", beds);
+        filter.beds = beds;
+      }
     }
 
     // ---- Bathrooms ----
     const bathMatch = q.match(/(\d+)\s*(bath|bathroom)/);
-    if (bathMatch) {
-      params.append("baths_min", bathMatch[1]);
-      filter.baths = bathMatch[1];
+    if (bathMatch && bathMatch[1]) {
+      const baths = parseInt(bathMatch[1]);
+      if (!isNaN(baths)) {
+        params.append("baths_min", baths);
+        filter.baths = baths;
+      }
     }
 
     // ---- Pool ----
@@ -104,9 +120,12 @@ export default async function handler(req, res) {
 
     // ---- Year Built ----
     const yearMatch = q.match(/(after|since|built in|built after)\s*(\d{4})/);
-    if (yearMatch) {
-      params.append("year_built_min", yearMatch[2]);
-      filter.yearBuiltMin = yearMatch[2];
+    if (yearMatch && yearMatch[2]) {
+      const year = parseInt(yearMatch[2]);
+      if (!isNaN(year)) {
+        params.append("year_built_min", year);
+        filter.yearBuiltMin = year;
+      }
     }
 
     // ---- Views ----
@@ -153,7 +172,8 @@ export default async function handler(req, res) {
     } else {
       // Normal case
       realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
-      message = "Here are the closest matches I could find based on your search ✅";
+      message =
+        "Here are the closest matches I could find based on your search ✅";
     }
 
     res.writeHead(200, {
@@ -172,3 +192,4 @@ export default async function handler(req, res) {
     );
   }
 }
+
