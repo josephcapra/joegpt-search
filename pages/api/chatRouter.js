@@ -13,7 +13,7 @@ function corsHeaders(origin) {
 export default async function handler(req, res) {
   const origin = req.headers.origin || "*";
 
-  // Handle preflight (CORS)
+  // Handle preflight
   if (req.method === "OPTIONS") {
     res.writeHead(200, corsHeaders(origin));
     return res.end();
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing query" });
     }
 
-    // 🔍 Heuristic: detect if this looks like a real estate search intent
+    // 🔍 Detect if this looks like a home search
     const isSearchIntent = /(under|over|between|\d+\s*bed|\d+\s*bath|stuart|psl|lucie|hobe sound|martin county|palm beach|condo|townhome|pool|waterfront|view)/i.test(
       query
     );
@@ -42,24 +42,24 @@ export default async function handler(req, res) {
       // Forward to your existing parseSearch
       return parseSearch(req, res);
     } else {
-      // Forward to JoeGPT (your custom Assistant)
+      // Forward to JoeGPT (Custom GPT ID)
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${process.env.Personal_Account_Key}`,
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // cost-effective model for chat
-          assistant_id: "asst_wFyjNuN4onfcvMhdSURVPmk1", // 👈 your JoeGPT assistant
+          model: "gpt-4o-mini", // or "gpt-5" if you want
+          custom_gpt_id: "g-67f91bf269808191bafd6c9ab10d1413", // JoeGPT ID
           input: query,
         }),
       });
 
       const data = await response.json();
-
       const answer =
-        data?.output?.[0]?.content?.[0]?.text ||
+        data.output?.[0]?.content?.[0]?.text ||
+        data.choices?.[0]?.message?.content ||
         "Sorry, I couldn’t find an answer.";
 
       res.writeHead(200, {
