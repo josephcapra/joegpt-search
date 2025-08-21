@@ -6,7 +6,7 @@ const directory = "./";
 
 // Old and new domains
 const oldDomain = "joegpt-search.vercel.app";
-const newDomain = "joegpt.net";
+const newDomain = "www.joegpt.net";
 
 // File extensions to scan
 const textFileExtensions = [
