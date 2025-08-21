@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+          "Authorization": `Bearer ${process.env.Service_Account_Joe}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
