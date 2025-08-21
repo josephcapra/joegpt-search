@@ -51,7 +51,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           model: "gpt-4o-mini", // or "gpt-5" if enabled
-          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e", // ✅ Your team JoeGPT ID
+          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e-joegpt", // ✅ Your team JoeGPT ID
           input: query,
         }),
       });
