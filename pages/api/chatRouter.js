@@ -13,7 +13,7 @@ function corsHeaders(origin) {
 export default async function handler(req, res) {
   const origin = req.headers.origin || "*";
 
-  // Handle preflight
+  // --- Handle preflight ---
   if (req.method === "OPTIONS") {
     res.writeHead(200, corsHeaders(origin));
     return res.end();
@@ -42,22 +42,22 @@ export default async function handler(req, res) {
       // Forward to your existing parseSearch
       return parseSearch(req, res);
     } else {
-      // Forward to JoeGPT (TEAM account GPT ID)
+      // ✅ Call JoeGPT via Responses API using JoeGPTWidget key
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`, // Service_Account_Joe
+          "Authorization": `Bearer ${process.env.JoeGPTWidget}`, // 👈 updated here
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // could also use "gpt-5" if enabled
-          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e", // ✅ NEW JoeGPT ID
+          model: "gpt-4o-mini", // or "gpt-5" if enabled
+          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e", // ✅ Your team JoeGPT ID
           input: query,
         }),
       });
 
       const data = await response.json();
-      console.log("JoeGPT API response:", data); // 👀 log for debugging
+      console.log("JoeGPT API response:", data); // Debug logs in Vercel
 
       const answer =
         data.output?.[0]?.content?.[0]?.text ||
