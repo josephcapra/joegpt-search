@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       // Forward to your existing parseSearch
       return parseSearch(req, res);
     } else {
-      // Forward to JoeGPT (Custom GPT ID)
+      // ✅ Forward to JoeGPT (Custom GPT ID)
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
@@ -50,16 +50,24 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // or "gpt-5" if you want
+          model: "gpt-4o-mini", // or "gpt-5" if enabled
           custom_gpt_id: "g-67f91bf269808191bafd6c9ab10d1413", // JoeGPT ID
-          input: query,
+          input: [
+            {
+              role: "system",
+              content:
+                "You are JoeGPT, a helpful real estate assistant for Florida home buyers and sellers. Answer clearly and conversationally."
+            },
+            { role: "user", content: query }
+          ]
         }),
       });
 
       const data = await response.json();
+
+      // ✅ Parse the new /responses output format
       const answer =
         data.output?.[0]?.content?.[0]?.text ||
-        data.choices?.[0]?.message?.content ||
         "Sorry, I couldn’t find an answer.";
 
       res.writeHead(200, {
