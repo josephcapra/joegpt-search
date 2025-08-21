@@ -32,8 +32,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing query" });
     }
 
-    // ✅ Use JoeGPTWidget if present, else fallback to JoeGPTWidget
-    const apiKey = process.env.JoeGPTWidget || process.env.JoeGPTWidget;
+    // ✅ Use JoeGPTWidget if present, else fallback to OPENAI_API_KEY
+    const apiKey = process.env.JoeGPTWidget || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.error("❌ No API key found. Check Vercel env vars.");
       return res.status(500).json({
