@@ -1,6 +1,6 @@
 export default function handler(req, res) {
   // Check if key is loaded
-  const key = process.env.JoeGPTWidget;
+  const key = process.env.OPENAI_API_KEY;
   const envVars = Object.keys(process.env).filter(k =>
     k.toLowerCase().includes("gpt") || k.toLowerCase().includes("openai")
   );
