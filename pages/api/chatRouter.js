@@ -13,7 +13,7 @@ function corsHeaders(origin) {
 export default async function handler(req, res) {
   const origin = req.headers.origin || "*";
 
-  // Handle preflight
+  // --- Handle CORS preflight ---
   if (req.method === "OPTIONS") {
     res.writeHead(200, corsHeaders(origin));
     return res.end();
@@ -39,36 +39,32 @@ export default async function handler(req, res) {
     );
 
     if (isSearchIntent) {
-      // Forward to your existing parseSearch
+      // Forward to parseSearch handler
       return parseSearch(req, res);
     } else {
-      // ✅ Forward to JoeGPT using your Service_Account_Joe key
+      // ✅ Call JoeGPT via Responses API
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.Service_Account_Joe}`, // 👈 updated here
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`, // set to Service_Account_Joe in Vercel
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           model: "gpt-4o-mini", // or "gpt-5" if enabled
           custom_gpt_id: "g-67f91bf269808191bafd6c9ab10d1413", // JoeGPT ID
-          input: [
-            {
-              role: "system",
-              content:
-                "You are JoeGPT, a helpful real estate assistant for Florida home buyers and sellers. Answer clearly and conversationally."
-            },
-            { role: "user", content: query }
-          ]
+          input: query,
         }),
       });
 
       const data = await response.json();
-      console.log("DEBUG OpenAI response:", data); // 👈 helpful for Vercel logs
 
-      // ✅ Parse the new /responses output format
+      // Debugging: log the API output
+      console.log("JoeGPT API response:", JSON.stringify(data, null, 2));
+
+      // Extract JoeGPT’s answer safely
       const answer =
         data.output?.[0]?.content?.[0]?.text ||
+        data.choices?.[0]?.message?.content ||
         "Sorry, I couldn’t find an answer.";
 
       res.writeHead(200, {
