@@ -1,4 +1,3 @@
-// pages/api/chatRouter.js
 import parseSearch from "./parseSearch";
 
 function corsHeaders(origin) {
@@ -33,31 +32,48 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing query" });
     }
 
-    // 🔍 Detect if this looks like a home search
+    // ✅ Use JoeGPTWidget if present, else fallback to OPENAI_API_KEY
+    const apiKey = process.env.JoeGPTWidget || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("❌ No API key found. Check Vercel env vars.");
+      return res.status(500).json({
+        error: "Missing API key",
+        details: "Set JoeGPTWidget or OPENAI_API_KEY in Vercel Environment Variables",
+      });
+    }
+
+    // 🔍 Detect if this looks like a home search query
     const isSearchIntent = /(under|over|between|\d+\s*bed|\d+\s*bath|stuart|psl|lucie|hobe sound|martin county|palm beach|condo|townhome|pool|waterfront|view)/i.test(
       query
     );
 
     if (isSearchIntent) {
-      // Forward to your existing parseSearch
+      // Forward to parseSearch
       return parseSearch(req, res);
     } else {
-      // ✅ Call JoeGPT via Responses API using JoeGPTWidget key
+      // Forward to JoeGPT (custom GPT)
       const response = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${process.env.JoeGPTWidget}`, // 👈 updated here
+          "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini", // or "gpt-5" if enabled
-          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e", // ✅ Your team JoeGPT ID
+          model: "gpt-4o-mini", // or gpt-5 if you prefer
+          custom_gpt_id: "g-68a76e50d7c8819196925f7f44243a1e", // JoeGPT ID
           input: query,
         }),
       });
 
       const data = await response.json();
-      console.log("JoeGPT API response:", data); // Debug logs in Vercel
+
+      if (!response.ok) {
+        console.error("❌ OpenAI API error:", data);
+        return res.status(500).json({
+          error: "OpenAI API call failed",
+          details: data,
+        });
+      }
 
       const answer =
         data.output?.[0]?.content?.[0]?.text ||
