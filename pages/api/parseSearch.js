@@ -1,8 +1,29 @@
 // pages/api/parseSearch.js
 
+function corsHeaders(origin) {
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
 export default async function handler(req, res) {
+  const origin = req.headers.origin || "*";
+
+  // --- Handle preflight ---
+  if (req.method === "OPTIONS") {
+    res.writeHead(200, corsHeaders(origin));
+    return res.end();
+  }
+
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed. Use POST." });
+    res.writeHead(405, {
+      "Content-Type": "application/json",
+      ...corsHeaders(origin),
+    });
+    return res.end(JSON.stringify({ error: "Method not allowed. Use POST." }));
   }
 
   try {
@@ -120,13 +141,34 @@ export default async function handler(req, res) {
       filter.type = "Multi-family";
     }
 
-    // ✅ Final Real Geeks link
-    const realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
+    // ✅ Decide final link
+    let realGeeksLink;
+    let message;
 
-    return res.status(200).json({ filter, realGeeksLink });
+    if (Object.keys(filter).length === 0) {
+      // No useful filters → send to advanced search
+      realGeeksLink = "https://www.paradiserealtyfla.com/search/advanced_search/";
+      message =
+        "I couldn’t find an exact match for what you typed 🤔. No worries though — try the Advanced Search tool where you can customize your search a little better!";
+    } else {
+      // Normal case
+      realGeeksLink = `https://www.paradiserealtyfla.com/search/results/?${params.toString()}`;
+      message = "Here are the closest matches I could find based on your search ✅";
+    }
 
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      ...corsHeaders(origin),
+    });
+    return res.end(JSON.stringify({ filter, realGeeksLink, message }));
   } catch (err) {
     console.error("parseSearch error:", err);
-    return res.status(500).json({ error: "parseSearch failed", details: err.message });
+    res.writeHead(500, {
+      "Content-Type": "application/json",
+      ...corsHeaders(origin),
+    });
+    return res.end(
+      JSON.stringify({ error: "parseSearch failed", details: err.message })
+    );
   }
 }
